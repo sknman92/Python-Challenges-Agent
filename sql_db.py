@@ -4,6 +4,7 @@
 
 import sqlite3
 from datetime import datetime
+from typing import Union, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic_schema import ScorecardRow
@@ -33,9 +34,23 @@ def _create_statement(table_name:str, py_schema: type[BaseModel]):
 
     type_map = {str: "TEXT", int: "INTEGER", float: "REAL", datetime: "TEXT"}
 
-    col_sql = ",\n".join(f"{field} {type_map.get(fieldInfo.annotation, 'TEXT')}" for field, fieldInfo in schema_dict.items())
+    cols = []
+    for field, fieldInfo in schema_dict.items():
+        annotation = fieldInfo.annotation
 
-    create_statement = f"CREATE TABLE IF NOT EXISTS {table_name} (\n" + col_sql + "\n)"
+        # unwrap Optional[X] (i.e. Union[X, None]) to get the underlying type
+        if get_origin(annotation) is Union:
+            args = [a for a in get_args(annotation) if a is not type(None)]
+            annotation = args[0] if args else annotation
+
+        is_primary_key = (fieldInfo.json_schema_extra or {}).get("primary_key", False)
+
+        if is_primary_key:
+            cols.append(f"{field} INTEGER PRIMARY KEY AUTOINCREMENT")
+        else:
+            cols.append(f"{field} {type_map.get(annotation, 'TEXT')}")
+
+    create_statement = f"CREATE TABLE IF NOT EXISTS {table_name} (\n" + ",\n".join(cols) + "\n)"
 
     return create_statement
 
@@ -44,15 +59,17 @@ def _insert_statement(row: BaseModel, py_schema: type[BaseModel]):
     Constructs insert statement based on pydantic schema
     """
 
-    fields = [field for field, value in row]
-    values = [value.isoformat() if isinstance(value, datetime) else value for field, value in row]
-    fields_str = ','.join(field for field, value in row)
+    # drop unset fields (e.g. an omitted optional primary key) so the db can auto-generate them
+    provided = [(field, value) for field, value in row if value is not None]
+
+    fields = [field for field, value in provided]
+    values = [value.isoformat() if isinstance(value, datetime) else value for field, value in provided]
+    fields_str = ','.join(fields)
     placeholders = ','.join('?' for _ in fields)
 
     set_fields = [field for field in _retrieve_rows(py_schema)]
 
     # assertions
-    assert len(fields) == len(set_fields), "Missing a field"
     assert all(f in set_fields for f in fields), "Missing a field"
 
     insert_statement = f"""insert into {table_name} (

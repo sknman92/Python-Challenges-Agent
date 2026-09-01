@@ -31,10 +31,11 @@ system_prompt = """
     Your grading will be stored as a row in SQL database. 
 
     Fields required for the row:
-        1. Date : {date}
-        2. Main_Topic
-        3. Score
-        4. Feedback
+        1. Date: {date}
+        2. Challenge_Summary
+        3. Main_Topic
+        4. Score
+        5. Feedback 
 """
 
 def _todays_date() -> pd.Timestamp:
@@ -47,7 +48,7 @@ def _todays_date() -> pd.Timestamp:
 
 def retrieve_attempt():
 
-    path_attemptFile = input("Input path to your attempt file")
+    path_attemptFile = input("Input path to your attempt file: ")
 
     try:
         return Path(path_attemptFile).read_text()
