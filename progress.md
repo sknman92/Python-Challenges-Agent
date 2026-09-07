@@ -1,3 +1,5 @@
 # Progress
 
-- **Pandas Aggregation** — 10: 1, 6: 1, 7: 1
+- **Pandas Aggregation** — 6: 2, 7: 1, 9: 1, 10: 1
+- **Pandas Aggregation & Time Series Analysis** — 4: 1, 8: 2
+- **Pandas DateTime & Time Series Analysis** — 8: 1
