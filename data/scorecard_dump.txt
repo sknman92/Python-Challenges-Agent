@@ -1,0 +1,497 @@
+COLUMNS: ['Id', 'Date', 'Main_Topic', 'Challenge_Summary', 'Score', 'Feedback']
+ROW COUNT: 11
+
+---
+Id: 1
+Date: 2026-08-26T21:34:00.140541
+Main_Topic: Pandas Aggregation
+Challenge_Summary: None
+Score: 10
+Feedback: Excellent work! All four tasks are completed correctly and efficiently. Here's a breakdown:
+
+**Strengths:**
+- **Task 1:** `groupby` with `.agg()` using named aggregation syntax is the ideal, modern approach. Grouping by both `region` and `category` is correct, and `reset_index()` is appropriately used to flatten the result.
+- **Task 2:** `avg_order_value` is correctly derived by dividing `total_sales_amount` by `total_units_sold` — clean and straightforward.
+- **Task 3:** `sort_values()` with `ascending=False` correctly sorts by `total_sales_amount` in descending order.
+- **Task 4:** Boolean filtering with `.loc[]` is the preferred and idiomatic pandas approach for row filtering.
+
+**Areas for Improvement:**
+- Minor: The `df.head()` call at the top is a leftover exploratory line and doesn't affect correctness, but could be removed for cleaner production-style code.
+- Consider resetting the index after filtering (`df_filtered.reset_index(drop=True)`) for a cleaner final output, though this is optional.
+
+Overall, this is a textbook-perfect solution demonstrating strong command of pandas aggregation, transformation, sorting, and filtering. Well done!
+---
+Id: 2
+Date: 2026-08-26T22:26:34.183516
+Main_Topic: Pandas Aggregation
+Challenge_Summary: None
+Score: 6
+Feedback: 
+**Overall: C — Functional but with notable issues and misconceptions.**
+
+---
+
+**Task 1 — Total Revenue & Number of Deals ✅ (with caveats)**
+- Using `transform` with a lambda that branches on `x.name` is a creative approach and works correctly here.
+- However, this is unconventional and fragile. The standard approach would be to use `groupby().agg()` to compute `total_revenue` and `num_deals` cleanly, then merge/join back to the original DataFrame (or just build a summary DataFrame directly).
+- Assigning two columns at once via `transform` returning different types per column is risky and harder to read/maintain.
+
+**Task 2 — Average Large Deal ⚠️ (logic bug)**
+- The `_avg_large_deal` helper function has a **critical logic error**: `group_filtered` (a filtered DataFrame) will **never be `None`** — an empty DataFrame is falsy but not `None`. The correct check should be `if not group_filtered.empty:` or `if len(group_filtered) > 0:`.
+- As written, if a rep has no large deals, `group_filtered` is an empty DataFrame, the `if group_filtered is not None` branch is still entered, and a **ZeroDivisionError** will occur (dividing by 0 from `.count()`).
+- The docstring says `""""` (4 quotes) — minor syntax issue but works due to Python's string parsing.
+- Using `.sum() / .count()` manually is fine, but `.mean()` is simpler and less error-prone.
+- The overall structure of using `groupby().apply()` with a helper that mutates and returns the group is acceptable.
+
+**Task 3 — Filter by Total Revenue ✅**
+- Correct and clean. Filtering on `total_revenue > 15000` is exactly right.
+
+---
+
+**Areas for Improvement:**
+1. Fix the `None` check → use `if not group_filtered.empty`.
+2. Prefer `groupby().agg()` for Task 1 to produce a clean summary DataFrame directly.
+3. Use `.mean()` instead of manual `.sum() / .count()`.
+4. The final output is not deduplicated to one row per rep — since `transform` broadcasts values back to all rows, `df_3` will still have multiple rows per rep. A final `.drop_duplicates(subset='rep')` or restructuring with `agg` is needed.
+
+---
+Id: 3
+Date: 2026-08-30T21:28:37.092240
+Main_Topic: Pandas Aggregation
+Challenge_Summary: None
+Score: 7
+Feedback: **Overall: Good effort with solid understanding of Pandas groupby mechanics. A few inefficiencies and rough edges to polish.**
+
+**✅ What was done well:**
+- Correct use of `groupby` + `transform` for Task 1 to broadcast aggregated values back to the original DataFrame.
+- Clean helper function `_avg_large_deal` with a docstring and clear logic for handling the "no large deals" edge case using `.empty`.
+- `groupby().apply()` is an appropriate choice for Task 2's per-group custom logic.
+- Task 3 filter (`total_revenue > 15000`) is correct.
+- The final `df_final` step correctly reduces to one row per rep with the right columns.
+
+**⚠️ Areas for Improvement:**
+- **Task 1 - Inefficiency:** Using `transform` with a lambda that branches on `x.name` is clever but fragile and unconventional. A cleaner approach would be two separate `groupby().transform()` calls, or better yet, a single `groupby().agg()` followed by a merge/join.
+- **Task 2 - Redundancy in `avg_large_deal` calculation:** `group_filtered['revenue'].sum() / group_filtered['deal_size'].count()` works, but `group_filtered['revenue'].mean()` is simpler and more idiomatic.
+- **Task 2 - `apply` deprecation concern:** Mutating `rep_group` inside `apply` and returning it can cause `SettingWithCopyWarning` or unexpected behavior in newer Pandas versions. Returning a scalar Series from `apply` is safer.
+- **Final step - Unnecessary `max()`:** Using `.max()` to deduplicate rows after filtering is a workaround. The cleaner approach is to `drop_duplicates()` on the rep level or restructure the pipeline to avoid row duplication in the first place.
+- **Commented-out code:** `# if group_filtered is not None:` should be removed to keep the code clean.
+---
+Id: 4
+Date: 2026-09-01T21:57:03.421976
+Main_Topic: Pandas Aggregation
+Challenge_Summary: A multi-step Pandas challenge involving groupby aggregation, rolling averages, month-over-month deltas, percentile-based tier assignment with pd.qcut, and a boolean improvement flag using transform — all scoped correctly per sales rep.
+Score: 6
+Feedback: **Overall: C — Solid foundation with a few notable mistakes.**
+
+**What was done well:**
+- Step 1 groupby aggregation is correct and clean. Columns are named properly using named aggregation syntax.
+- `pd.to_datetime` conversion is applied correctly before grouping.
+- Step 3 (MoM delta) is correctly scoped per rep using `transform` and `shift(1)` — no bleed across reps.
+- Step 4 uses `pd.qcut` with no hardcoded thresholds — satisfies the constraint.
+- Step 5 uses `transform` with a groupby, which is the right approach.
+
+---
+
+**Issues and areas for improvement:**
+
+**Step 1 — `enterprise_share` uses a list comprehension loop:**
+```python
+lambda x: sum([1 if y == 'Enterprise' else 0 for y in x]) / x.count()
+```
+This works but violates the "no loops over rows" constraint. A cleaner, idiomatic Pandas approach:
+```python
+enterprise_share=('product', lambda x: (x == 'Enterprise').mean())
+```
+
+**Step 2 — Rolling SUM instead of rolling MEAN:**
+The task asks for a **3-month rolling average** (`mean`), but the student used `.rolling(...).sum()`. This is a clear functional error.
+```python
+# Incorrect:
+x.rolling(window=3, min_periods=1).sum()
+# Correct:
+x.rolling(window=3, min_periods=1).mean()
+```
+
+**Step 5 — Uses a list comprehension loop inside `transform`:**
+```python
+lambda x: [True if y > x.median() else False for y in x]
+```
+This violates the constraint requiring a "single clean expression, no loops." The correct approach:
+```python
+monthly_summary['is_improving'] = monthly_summary.groupby('rep')['rolling_3m_revenue'].transform(
+    lambda x: x > x.median()
+)
+```
+This is vectorized, concise, and returns a boolean Series directly.
+
+**Step 1 — Sort order not explicitly guaranteed:**
+The task says "make sure `month` is sorted chronologically within each rep." While `groupby` often preserves order, it's safer to add `.sort_values(['rep', 'month'])` after `reset_index()` to be explicit.
+
+---
+
+**Summary of constraint violations:**
+| Constraint | Status |
+|---|---|
+| No loops over rows/groups | ❌ Violated in Steps 1 and 5 |
+| No hardcoded thresholds | ✅ |
+| `transform` used in Step 5 | ✅ (but with a loop inside) |
+| Rolling scoped per rep | ✅ |
+| Rolling uses mean not sum | ❌ Wrong aggregation used |
+
+---
+Id: 5
+Date: 2026-09-03T17:09:45.713807
+Main_Topic: Pandas Aggregation
+Challenge_Summary: The student was given a streaming content dataset with columns for content_id, genre, week, views, and watch_hours. They were tasked with 5 Pandas operations: (1) group-level aggregation by genre, (2) a rolling 3-week average of views per content, (3) week-over-week view delta per content, (4) quartile-based performance tiering of views, and (5) a boolean flag indicating whether each row's views exceeded its genre average.
+Score: 9
+Feedback: **Overall: Excellent work — clean, idiomatic Pandas throughout.**
+
+**Task 1 – Genre Aggregation ✅**
+- Correct use of `groupby` + `agg` with named aggregations.
+- `reset_index()` is a nice touch for a clean output DataFrame.
+
+**Task 2 – Rolling Average ✅**
+- Correctly scoped to `content_id` groups via `transform`.
+- `min_periods=1` is a thoughtful inclusion to handle the first 1–2 rows of each group gracefully rather than producing NaNs.
+
+**Task 3 – WoW Delta ✅**
+- `x - x.shift(1)` is the correct and idiomatic approach.
+- Note: The first week for each content_id will be `NaN` — this is expected behavior, but worth documenting or filling (e.g., `fill_value=0`) depending on downstream use.
+
+**Task 4 – Performance Tier ✅**
+- `pd.qcut` with 4 bins and meaningful labels is well applied.
+- Minor inconsistency: labels use mixed separators — `'mid_low'` (underscore) vs `'mid-high'` (hyphen). Standardize for cleanliness (e.g., all underscores or all hyphens).
+- `pd.qcut` operates on the **entire column globally**, not per-genre or per-content — confirm this is the intended scope.
+
+**Task 5 – Above Genre Average Flag ✅**
+- Clean and correct use of `groupby` + `transform` to broadcast the group mean for comparison.
+- Returns a boolean Series, which is appropriate and efficient.
+
+**Final Check**
+- `df.shape` is a reasonable sanity check, though printing or asserting the shape would be more useful in a script or test context.
+
+**Minor Areas for Improvement:**
+- Add inline comments or docstrings explaining each transformation for readability.
+- Standardize label formatting in Task 4.
+- Consider handling or documenting the `NaN` in the first week of Task 3.
+---
+Id: 6
+Date: 2026-09-07T17:01:30.652042
+Main_Topic: Pandas Aggregation & Time Series Analysis
+Challenge_Summary: Student was tasked with performing a multi-part Pandas data analysis challenge on a synthetic retail transaction dataset. Tasks included: parsing datetime strings, extracting date features, filtering data, computing monthly customer spend (excluding returns), calculating month-over-month deltas, rolling 3-month averages, customer spend tier segmentation via qcut, a day-of-week/category pivot table, weekly resampling, and early adopter flagging.
+Score: 4
+Feedback: **Overall Grade: D (Score: 4/10)**
+
+The student demonstrated a solid understanding of the high-level goals and correctly implemented several parts of the pipeline. However, there are critical logical errors — particularly in Part 3 — that would cause the downstream results (Parts 4–8) to be incorrect or to raise exceptions entirely.
+
+---
+
+**✅ What Was Done Well:**
+
+- **Part 1 (DateTime Parsing & Feature Extraction):** Correct. `pd.to_datetime`, `.dt.year/month/quarter/day_of_week/hour`, and `is_weekend` via `.isin([5,6])` are all properly applied.
+- **Part 2 (Filtering):** Correct. Filtering for 2023 and Q4 2023 using `.loc` is clean and accurate.
+- **Part 7 (Resampling):** Correct. `resample('W')` with the appropriate aggregations is well-structured and produces a valid weekly summary.
+- **Part 8 (Early Adopter Flag):** Logic is mostly sound — finding the first transaction date, comparing to a threshold, and mapping back via a dictionary is a reasonable approach. Using `.fillna(False)` is a nice touch.
+- **Part 6 (Pivot Table):** The `groupby` + `unstack()` approach is valid, though the column is named `avg_spend` but uses `'sum'` — a minor naming inconsistency.
+
+---
+
+**❌ Critical Errors:**
+
+**Part 3 — `groupby().transform()` misuse (Major Bug):**
+```python
+monthly_spend = df_2023.groupby(['customer_id', 'month']).transform(
+    lambda x: x.loc[x['is_returned'] != True, 'amount'].sum()
+).reset_index(name='monthly_spend')
+```
+- `transform()` operates on individual **Series** (one column at a time), not on the full sub-DataFrame. Accessing `x['is_returned']` or `x['amount']` inside a `transform` lambda will raise a `KeyError`.
+- `transform()` also returns a same-shape DataFrame aligned to the original index — it is not the right tool for computing a per-group scalar aggregation like monthly spend. `agg()` or `apply()` should be used instead.
+- The correct approach would be to filter out returns **before** grouping, then use `.groupby().agg()`:
+```python
+monthly_spend = df_2023[df_2023['is_returned'] == False]\
+    .groupby(['customer_id', 'month'], as_index=False)\
+    .agg(monthly_spend=('amount', 'sum'))
+```
+
+**Part 3 — `reset_index(name=...)` misuse:**
+- `reset_index(name=...)` is valid only on a **Series**, not a DataFrame. This would raise a `TypeError`.
+
+**Part 3 — MoM Delta chaining:**
+```python
+monthly_spend['mom_delta'] = monthly_spend.sort_values(...).groupby(...)['monthly_spend'].transform(...).reset_index(drop=True)
+```
+- Calling `.reset_index(drop=True)` on a `transform()` result (which returns a Series aligned to the original index) and then assigning it back breaks index alignment. This is a subtle but real bug that can silently misalign rows.
+
+---
+
+**⚠️ Minor Issues:**
+
+- **Part 6:** Column named `avg_spend` but aggregated with `'sum'` — misleading naming.
+- **Part 8:** `first_trans['is_early_adopter']` will be `NaN` for non-early adopters since the column is only set conditionally. The `.fillna(False)` in the map step handles this, but the intermediate `first_trans` DataFrame is left in an inconsistent state.
+- **`apply(pd.to_datetime)` in Part 1:** Works, but `pd.to_datetime(df['raw_transaction_date'])` (vectorized) is preferred for performance.
+
+---
+
+**Recommendations:**
+1. Study the difference between `transform()`, `agg()`, and `apply()` — this is the most critical gap.
+2. Always filter data **before** grouping when excluding rows based on a condition.
+3. Be cautious with index alignment when chaining `.sort_values()` before `.transform()`.
+4. Use vectorized Pandas operations over `.apply()` where possible.
+---
+Id: 7
+Date: 2026-09-07T17:04:37.505074
+Main_Topic: Pandas Aggregation & Time Series Analysis
+Challenge_Summary: Student was tasked with performing a multi-part Pandas data wrangling and analysis challenge on a synthetic retail transactions dataset. Tasks included: parsing datetime strings, extracting date features, filtering data, computing monthly spend with MoM deltas, rolling averages, customer spend tiers via qcut, a pivot table by day-of-week and category, weekly resampling, and early adopter flagging.
+Score: 8
+Feedback: **Overall: Strong attempt — most parts are correct and well-structured. A few subtle bugs and style issues noted below.**
+
+---
+
+**✅ What Was Done Well:**
+- **Part 1 (DateTime Parsing):** Correctly parsed the string column using `apply(pd.to_datetime)` and extracted all required features (`year`, `month`, `quarter`, `day_of_week`, `hour_of_day`, `is_weekend`). Clean and readable.
+- **Part 2 (Filtering):** Correct use of `.loc[]` for chained filtering on year and quarter.
+- **Part 4 (Rolling Average):** Correctly applied a 3-month rolling average with `min_periods=1` per customer group.
+- **Part 6 (Pivot Table):** Good use of `groupby` + `unstack()` to create the day-of-week × category pivot. The lambda for rounding inside `agg` works, though `x.mean().round(2)` is slightly unconventional (rounding inside the aggregator vs. after).
+- **Part 7 (Resampling):** Correct use of `resample('W')` on a datetime index with multi-metric aggregation. Clean and correct.
+- **Part 8 (Early Adopter):** Logic is sound — finds first transaction per customer, compares to threshold date, maps back to `monthly_spend`. `fillna(False)` is a nice touch.
+
+---
+
+**⚠️ Issues & Areas for Improvement:**
+
+1. **Part 3 — MoM Delta has an alignment bug (significant):**
+   ```python
+   monthly_spend['mom_delta'] = monthly_spend.sort_values(...).groupby(...)['monthly_spend'].transform(...).reset_index(drop=True)
+   ```
+   Calling `.reset_index(drop=True)` on the result of `.transform()` resets the index of the Series **before** it is assigned back to `monthly_spend`. Since `monthly_spend` retains its original index after `reset_index()` in Part 3, this causes **index misalignment** — the delta values will be assigned to the wrong rows. The `.reset_index(drop=True)` here is unnecessary and harmful. Simply remove it.
+
+2. **Part 3 — Filtering returned items:**
+   ```python
+   x['is_returned'] != True
+   ```
+   Prefer `~x['is_returned']` or `x['is_returned'] == False` for clarity and Pythonic style. `!= True` can behave unexpectedly with `NaN` values.
+
+3. **Part 5 — `spend_tier` mapping uses a Series, not a dict:**
+   ```python
+   monthly_spend['spend_tier'] = monthly_spend['customer_id'].map(customer_tier)
+   ```
+   `customer_tier` is a Series indexed by `customer_id`, so `.map()` works here — but it's worth noting this only works because the index aligns. This is fine but could be made more explicit with `.map(customer_tier.to_dict())` for clarity.
+
+4. **Part 8 — Conditional assignment without initializing the column:**
+   ```python
+   first_trans.loc[condition, 'is_early_adopter'] = True
+   ```
+   Non-matching rows are never assigned, leaving them as `NaN`. This is handled downstream with `fillna(False)`, which is acceptable — but initializing the column to `False` first (`first_trans['is_early_adopter'] = False`) would be cleaner and avoids a potential `SettingWithCopyWarning`.
+
+5. **Minor — `apply(pd.to_datetime)` in Part 1:**
+   `pd.to_datetime(df['raw_transaction_date'])` (vectorized) is preferred over `.apply(pd.to_datetime)` for performance on large datasets.
+
+---
+
+**Summary:** The student demonstrates solid Pandas knowledge across datetime handling, groupby aggregation, resampling, and mapping. The MoM delta index misalignment is the most impactful bug. Addressing that and adopting more Pythonic/vectorized patterns would push this to a top score.
+---
+Id: 8
+Date: 2026-09-07T17:07:41.504381
+Main_Topic: Pandas Aggregation & Time Series Analysis
+Challenge_Summary: Student was tasked with performing a multi-part Pandas data wrangling and analysis challenge on a synthetic retail transactions dataset. Tasks included: parsing datetime strings, extracting date features, filtering data, computing monthly spend with MoM deltas, rolling averages, customer spend tiers via qcut, a day-of-week/category pivot, weekly resampling, and early adopter flagging via conditional logic.
+Score: 8
+Feedback: **Overall: Strong attempt — most parts are correct and well-structured. A few subtle bugs and style concerns noted below.**
+
+---
+
+**✅ What Was Done Well:**
+
+- **Part 1 – Datetime Parsing & Feature Extraction:** Correctly parsed the string column using `pd.to_datetime` and extracted `year`, `month`, `quarter`, `day_of_week`, `hour_of_day`, and `is_weekend`. Clean and accurate.
+
+- **Part 2 – Filtering:** Correct use of `.loc[]` with chained boolean conditions to isolate 2023 and Q4 2023 data.
+
+- **Part 3 – Monthly Spend:** Good use of `groupby + apply` with a lambda to filter out returns before summing. Using `x['is_returned'] != True` works, though `~x['is_returned']` is more idiomatic.
+
+- **Part 4 – Rolling Average:** Correct use of `.transform()` with `rolling(window=3, min_periods=1)` — well done.
+
+- **Part 5 – Spend Tiers:** Correct use of `pd.qcut` and `.map()` to assign tiers back to `monthly_spend`. Clean approach.
+
+- **Part 6 – Pivot Table:** Correct use of `groupby + agg + unstack()` to create the day-of-week × category pivot. Rounding inside the lambda is a nice touch.
+
+- **Part 7 – Resampling:** Correct use of `.resample('W')` with multiple aggregations including a custom lambda for return rate. Clean and readable.
+
+- **Part 8 – Early Adopter Flag:** Correct logic for identifying early adopters using a date threshold and `.map()` to propagate the flag.
+
+---
+
+**⚠️ Areas for Improvement:**
+
+1. **Part 3 – MoM Delta Bug (Significant):**
+   ```python
+   monthly_spend['mom_delta'] = monthly_spend.sort_values(by=['month']).groupby(['customer_id'])\
+       ['monthly_spend'].transform(...).reset_index(drop=True)
+   ```
+   Calling `.reset_index(drop=True)` on the result of `.transform()` **resets the index**, which can cause **index misalignment** when assigning back to `monthly_spend`. The `.transform()` result is already aligned by index — the `.reset_index()` breaks this. This is a subtle but real bug that could silently corrupt the `mom_delta` column.
+
+2. **Part 3 – Sort Before GroupBy:**
+   Sorting by `['month']` alone before groupby is fragile. You should sort by `['customer_id', 'month']` to ensure correct ordering within each group before computing the shift.
+
+3. **Part 8 – NaN Early Adopters:**
+   Customers who are *not* early adopters will have `NaN` in `is_early_adopter` rather than `False`. This is fine if intentional, but explicitly filling with `False` (e.g., `.fillna(False)`) would make the column cleaner and safer for boolean filtering.
+
+4. **Part 8 – Filtering on NaN Boolean Column:**
+   ```python
+   monthly_spend.loc[monthly_spend['is_early_adopter'], 'customer_id'].nunique()
+   ```
+   This works because Pandas treats `NaN` as falsy in boolean indexing, but it's fragile. Prefer: `monthly_spend['is_early_adopter'] == True` or `.fillna(False)` upstream.
+
+5. **Minor Style – `apply` vs `transform` in Part 3:**
+   Using `groupby + apply` with a lambda that filters rows is valid but slightly heavy. A cleaner approach would be to pre-filter the DataFrame (`df_2023[~df_2023['is_returned']]`) before grouping.
+
+---
+
+**Summary:** This is a well-executed solution demonstrating solid Pandas fluency across datetime handling, aggregation, resampling, and mapping. The main deduction is the index misalignment bug in Part 3's MoM delta calculation. Fixing that and hardening the boolean flag handling would make this near-perfect.
+---
+Id: 9
+Date: 2026-09-07T17:12:49.419278
+Main_Topic: Pandas DateTime & Time Series Analysis
+Challenge_Summary: Student was tasked with performing a multi-part Pandas time series and aggregation challenge using a synthetic retail transaction dataset. Tasks included: parsing datetime strings, extracting date features, filtering by year/quarter, computing monthly spend with MoM growth, rolling averages, customer spend tiers via qcut, a day-of-week/category pivot, weekly resampling, and early adopter flagging.
+Score: 8
+Feedback: **Overall: Strong attempt — most parts are correct and well-structured. A few subtle issues to address.**
+
+---
+
+**✅ Strengths:**
+
+- **Part 1 – DateTime Parsing & Feature Extraction:** Correctly parsed the string column using `pd.to_datetime` and extracted all required features (`year`, `month`, `quarter`, `day_of_week`, `hour_of_day`, `week_of_year`, `is_weekend`). Good use of `.isocalendar().week.astype(int)`.
+
+- **Part 2 – Filtering:** Clean and correct use of `.loc[]` for chained filtering on year and quarter.
+
+- **Part 3 – Monthly Spend:** Correctly excluded returned items using `x['is_returned'] != True` (though `~x['is_returned']` is more Pythonic). MoM delta logic is reasonable.
+
+- **Part 4 – Rolling Average:** Correct use of `.rolling(window=3, min_periods=1).mean()` inside a `groupby().transform()`.
+
+- **Part 5 – Spend Tiers:** Good use of `pd.qcut` and `.map()` to assign tiers back to `monthly_spend`.
+
+- **Part 6 – Pivot Table:** Correct use of `groupby` + `unstack()` to create the day-of-week × category pivot.
+
+- **Part 7 – Weekly Resampling:** Correct use of `.resample('W')` with multiple aggregations including a lambda for `avg_returned`.
+
+- **Part 8 – Early Adopter Flag:** Logic is correct — identifies customers with a first transaction before April 1, 2023 and maps the flag back.
+
+---
+
+**⚠️ Areas for Improvement:**
+
+1. **Part 1 – `apply(pd.to_datetime)` is inefficient:** Using `.apply(pd.to_datetime)` is row-wise and slow. Prefer `pd.to_datetime(df['raw_transaction_date'])` directly — it's vectorized and much faster on large datasets.
+
+2. **Part 3 – MoM Delta has a subtle bug:** The `.reset_index(drop=True)` on the `mom_delta` transform is risky. After `sort_values`, the index may not align with `monthly_spend`'s index, potentially causing misaligned assignments. A safer approach is to sort `monthly_spend` in-place or use `.sort_values().groupby().transform()` directly on the DataFrame without chaining `.reset_index()`.
+
+3. **Part 5 – `customer_tier` is a Series, not a dict:** `pd.qcut` returns a Categorical Series indexed by `customer_id`. Using `.map()` on it works here, but it's worth noting that NaN customers (those not in `customer_spend`) will silently get `NaN` — consider adding a `.fillna()` or assertion.
+
+4. **Part 8 – `is_early_adopter` will be `NaN` for non-early adopters:** Only `True` is assigned; non-early adopters remain `NaN`. If downstream logic uses this as a boolean (e.g., `.loc[monthly_spend['is_early_adopter'], ...]`), it works, but it's better practice to explicitly fill with `False` for clarity and safety.
+
+5. **Minor style:** `x['is_returned'] != True` should be `~x['is_returned']` for idiomatic Pandas boolean filtering.
+
+---
+
+**Summary:** This is a well-executed solution covering a broad range of Pandas skills. The main concerns are the inefficient `apply(pd.to_datetime)`, the potentially misaligned MoM delta assignment, and the implicit `NaN`-as-False pattern in Part 8. Addressing these would bring this to a near-perfect solution.
+---
+Id: 10
+Date: 2026-09-08T22:16:48.031857
+Main_Topic: File I/O & Context Management
+Challenge_Summary: A multi-task challenge covering CSV file writing and reading, data processing with Pandas, appending late arrivals to a CSV, writing a sales summary log, exporting data to an Excel file with multiple sheets, and implementing a safe CSV reader with error handling.
+Score: 7
+Feedback: **Overall: Good effort across all 6 tasks — solid fundamentals with a few notable issues.**
+
+---
+
+**Task 1 – Write CSV ✅**
+- Correct use of `csv.DictWriter` with `writeheader()` and `writerows()`.
+- Proper use of `os.path.join` and context manager.
+
+---
+
+**Task 2 – Read & Enrich CSV ⚠️**
+- Good validation check comparing row counts.
+- `apply(lambda x: x.astype(float))` works but is unconventional — prefer `df[cols] = df[cols].astype(float)` directly.
+- `print(df['order_id'])` is a debug artifact and should be removed.
+- Writing back with `df.to_csv(w, index=False)` inside a `with open(..., 'w')` block is valid but slightly unusual — `df.to_csv(file_path)` directly is cleaner.
+
+---
+
+**Task 3 – Append Late Arrivals ⚠️**
+- Revenue is correctly computed before appending.
+- **Bug**: `csv.DictWriter` is used without writing a header (good), but `df.columns` may not match the original CSV column order, risking misalignment. Should explicitly pass the known fieldnames.
+- The `late_arrivals` DataFrame is created fresh but the outer `df` variable is overwritten, which could cause issues in Task 4.
+
+---
+
+**Task 4 – Write Log File ✅**
+- Two-step write/append pattern works correctly.
+- Revenue formatting with `'{:,.2f}'.format` is clean.
+- **Issue**: `df` at this point refers to the `late_arrivals` DataFrame (from Task 3), not the full dataset — so `region_revenue` and `total_revenue` will only reflect late arrivals, not all sales. This is a logical bug.
+- `total_revenue` is not formatted (no `$` or comma formatting), inconsistent with per-region lines.
+
+---
+
+**Task 5 – Excel Export ⚠️**
+- Good use of `pd.ExcelWriter` as a context manager.
+- Three sheets written correctly.
+- **Issue**: Numeric columns (`units`, `revenue`) are read from CSV as strings and never cast to numeric types before aggregation — `groupby().agg('sum')` on strings will concatenate rather than sum. This is a significant bug.
+- Sheet name `"by_product"` is inconsistent with `"By Region"` and `"Raw Data"` naming conventions.
+
+---
+
+**Task 6 – Safe CSV Reader ✅**
+- Clean function with type hint and assertion guard.
+- `FileNotFoundError` is correctly caught and handled.
+- **Improvement**: The function returns `None` implicitly on error — consider returning an empty list `[]` or re-raising for better caller handling.
+- Test with wrong path `r"sales_raw.csv"` (missing `data/` directory prefix) may not actually find the file — worth noting.
+
+---
+
+**Summary of Key Areas to Improve:**
+1. Avoid overwriting shared variables (e.g., `df`) across tasks.
+2. Cast numeric columns after reading from CSV before performing aggregations.
+3. Remove debug `print()` statements.
+4. Be explicit with fieldnames in `DictWriter` to avoid column order issues.
+
+---
+Id: 11
+Date: 2026-09-15T22:59:11.836199
+Main_Topic: Context Management
+Challenge_Summary: Implement a custom context manager class (TransactionSession) with custom exceptions (InsufficientFundsError, InvalidTransactionError) to safely process a series of financial transactions against a running balance, including a processing loop with appropriate error handling.
+Score: 7
+Feedback: **Overall: Good attempt with solid fundamentals — a few notable bugs prevent a higher score.**
+
+---
+
+**✅ What Was Done Well:**
+
+- **Custom exceptions** are well-structured. Both `InsufficientFundsError` and `InvalidTransactionError` correctly call `super().__init__()` with informative messages and store relevant attributes.
+- **`TransactionSession.__enter__`** correctly prints the opening message and returns `self`.
+- **`__exit__`** correctly suppresses `InvalidTransactionError` (returns `True`) and propagates all other exceptions (returns `False`). Logging the warning in `__exit__` is a nice touch.
+- **Task 3 loop** correctly uses `try/except` per transaction, catches both exception types, and re-raises `InsufficientFundsError` to exit the `with` block — this is the right pattern.
+- The `continue` after catching `InvalidTransactionError` is correct.
+
+---
+
+**❌ Bugs & Issues:**
+
+1. **Typo in `InsufficientFundsError`:** `self.tranaction_id` (missing an 's') — minor but would break any code referencing `self.transaction_id` on that exception.
+
+2. **Order of checks in `apply()` is wrong (critical bug):**
+   The negative-amount check (`InvalidTransactionError`) comes *after* the balance calculation. A negative debit (e.g., T005: `-50.00`) would compute `balance - (-50) = balance + 50`, which is positive, so it would silently pass as a valid transaction instead of raising `InvalidTransactionError`. The negative check must come **first**, before any balance math.
+
+3. **`__enter__` has a typo:** `"Staring balance"` should be `"Starting balance"`.
+
+4. **`apply()` takes a redundant `balance` parameter:** Since `self.balance` is already tracked on the instance, passing `balance` as an argument is unnecessary and creates confusion. The method should use `self.balance` internally. In Task 3, `s.apply(transaction, s.balance)` works around this, but it's not clean design.
+
+5. **`__exit__` balance display missing `$` format:** `f"[Session Closed] Ending balance: {self.balance}"` is missing the `$` and `:.2f` formatting, unlike `__enter__`.
+
+6. **Unnecessary `pass` statements** at the end of both exception classes — harmless but redundant after a method body.
+
+---
+
+**💡 Suggestions for Improvement:**
+
+- Always validate inputs (negative amount) **before** performing calculations.
+- Keep state internal to the class — avoid passing `self.balance` back into `self.apply()`.
+- Double-check string formatting consistency between `__enter__` and `__exit__`.
+- The bonus `contextlib.contextmanager` refactor was not attempted — worth trying for extra practice!
