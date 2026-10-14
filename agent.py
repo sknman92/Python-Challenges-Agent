@@ -119,6 +119,8 @@ while True:
 
     if not last.tool_calls:
         user_reply = input(">")
+        if not user_reply.strip():
+            continue  # skip empty input, re-prompt without calling the model
         if user_reply.lower() in ('quit', 'exit'):
             break
         messages.append(("user", user_reply))
