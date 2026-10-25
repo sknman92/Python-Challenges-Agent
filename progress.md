@@ -7,3 +7,4 @@
 - **Context Management** — 7: 1
 - **FastAPI Basics** — 8: 1
 - **FastAPI** — 8: 1
+- **Kafka Producer & Consumer (Event Streaming)** — 8: 1

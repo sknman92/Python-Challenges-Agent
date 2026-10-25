@@ -46,12 +46,24 @@ def _todays_date() -> pd.Timestamp:
     today_timestamp = pd.Timestamp.now()
     return today_timestamp
 
+attempt_extensions = {".py", ".yml", ".yaml", ".sql"}
+
 def retrieve_attempt():
 
-    path_attemptFile = input("Input path to your attempt file: ")
+    path_attemptFile = input("Input path to your attempt file or folder: ")
+    p = Path(path_attemptFile)
 
     try:
-        return Path(path_attemptFile).read_text()
+        # multi-file attempt: read every relevant file, labelled with its path
+        if p.is_dir():
+            files = sorted(f for f in p.rglob("*")
+                           if f.suffix in attempt_extensions
+                           and "__pycache__" not in f.parts
+                           and f.name != "__init__.py")
+            return "\n\n".join(f"# ===== FILE: {f.relative_to(p)} =====\n{f.read_text(encoding='utf-8')}"
+                               for f in files)
+
+        return p.read_text(encoding='utf-8')
     except Exception as e:
         print(f"Could not open attempt file: {e}")
         raise

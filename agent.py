@@ -36,8 +36,9 @@ def generate_question_tool(user_prompt=None):
 @tool
 def retrieve_attempt_tool():
     """
-    Tool for retrieving attempt. The user will input file path to attempt.
-    This tool reads the content of the file path.
+    Tool for retrieving attempt. The user will input a file or folder path to attempt.
+    This tool reads the content of the file, or every relevant file in the folder,
+    each labelled with its path.
     """
     try:
         return retrieve_attempt()
